@@ -21,6 +21,23 @@ docker run -d \
 > You must accept the [Minecraft EULA](https://aka.ms/MinecraftEULA) by setting
 > `EULA=true`. The container refuses to start otherwise.
 
+## Console & logs
+
+```bash
+docker logs -f paper
+```
+
+Send commands straight to the server console with the bundled `mc` helper via
+`docker exec`. Commands are written to the server's stdin (not the container
+shell), and their output appears in `docker logs`:
+
+```bash
+docker exec paper mc say Hello everyone
+docker exec paper mc time set day
+docker exec paper mc whitelist add Notch
+docker exec paper mc stop
+```
+
 ### docker compose
 
 ```yaml

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 PAPER_JAR="/opt/paper/paper.jar"
+CONSOLE_PIPE="${CONSOLE_PIPE:-/tmp/minecraft-console.in}"
 
-# https://aka.ms/MinecraftEULA
 if [ "${EULA,,}" = "true" ]; then
   echo "eula=true" > /data/eula.txt
 else
@@ -46,13 +46,32 @@ AIKAR_FLAGS=(
 read -r -a EXTRA_JVM_OPTS <<< "${JVM_OPTS:-}"
 read -r -a EXTRA_PAPER_FLAGS <<< "${PAPER_FLAGS:-}"
 
-set -- java \
+rm -f "${CONSOLE_PIPE}"
+mkfifo "${CONSOLE_PIPE}"
+exec 3<>"${CONSOLE_PIPE}"
+
+echo "Starting PaperMC ${PAPER_VERSION:-?} (build ${PAPER_BUILD:-?}) with ${MEMORY} heap..."
+echo "Send console commands with: docker exec <container> mc <command>"
+
+java \
   "-Xms${MEMORY}" "-Xmx${MEMORY}" \
   "${AIKAR_FLAGS[@]}" \
   "${EXTRA_JVM_OPTS[@]}" \
   -jar "${PAPER_JAR}" \
   --nogui \
-  "${EXTRA_PAPER_FLAGS[@]}"
+  "${EXTRA_PAPER_FLAGS[@]}" <&3 &
+JAVA_PID=$!
 
-echo "Starting PaperMC ${PAPER_VERSION:-?} (build ${PAPER_BUILD:-?}) with ${MEMORY} heap..."
-exec "$@"
+trap 'echo "Stopping PaperMC gracefully..."; echo "stop" >&3' TERM INT
+
+set +e
+EXIT_CODE=0
+while kill -0 "${JAVA_PID}" 2>/dev/null; do
+  wait "${JAVA_PID}"
+  EXIT_CODE=$?
+done
+set -e
+
+exec 3>&-
+rm -f "${CONSOLE_PIPE}"
+exit "${EXIT_CODE}"

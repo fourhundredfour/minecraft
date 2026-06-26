@@ -32,9 +32,12 @@ RUN set -eux; \
 ENV EULA=false \
     MEMORY=2G \
     JVM_OPTS="" \
-    PAPER_FLAGS=""
+    PAPER_FLAGS="" \
+    CONSOLE_PIPE=/tmp/minecraft-console.in
 
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chmod=0755 mc-send.sh /usr/local/bin/mc-send-to-console
+RUN ln -s /usr/local/bin/mc-send-to-console /usr/local/bin/mc
 
 WORKDIR /data
 VOLUME ["/data"]
